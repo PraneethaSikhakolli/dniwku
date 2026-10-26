@@ -141,22 +141,9 @@ Build the frontend:
 docker compose exec frontend npm run build
 ```
 
-Browser/data checks:
-
-1. Opening the landing page makes no history request. Opening the dashboard fetches the history once; switching view/cutoff or returning to the dashboard reuses it.
-2. January, week and day selectors show the expected 1,488, 336 (full week), and 48 half-hour rows. The last partial January week contains 144 periods.
-3. Actuals are `FUELHH` WIND only. No delivery dates outside January 2026 or off-settlement 15-minute observations appear.
-4. Forecast versions published after the selected D-1 cutoff are excluded. A version published exactly at cutoff remains eligible.
-5. Missing half-hour forecasts use the mean of the two neighboring hourly values only when both are cutoff-eligible. The footer explains the method; unbracketed periods remain blank.
-6. Reported and estimated forecasts are distinguished in the CSV and publication audit. The audit identifies the two source hours used by an estimated half-hour value.
-7. MAE, RMSE and mean bias reflect the comparable forecast/actual intervals, including the disclosed estimates; residual signs follow `forecast − actual`.
-8. Unavailable Elexon data shows an error state without substitute data.
-9. `robots.txt` is available at `/robots.txt`; page title and meta description are present. Run Lighthouse against the production Compose page at `http://localhost:5173/`, not Vite's development server.
-10. After deployment, verify `/api/health`, the Vercel-to-Render API request, and CORS for the exact Vercel origin.
-
 ## 8. AI disclosure
 
-OpenAI Codex was used to interpret the challenge brief and assist with implementation, testing, UI changes, and documentation. The data source, cutoff, filtering, alignment, imputation, and metric conventions are stated above for review.
+OpenAI Codex was used to interpret the challenge brief and assist with testing, UI changes, and documentation.
 
 ## 9. Deployment status
 
