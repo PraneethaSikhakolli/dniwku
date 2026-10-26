@@ -46,6 +46,7 @@ Energy/
 │   ├── package-lock.json    # Reproducible frontend dependency versions
 │   ├── vercel.json          # Vercel security response headers
 │   └── Dockerfile           # Builds and serves the optimized Vite bundle
+├── .gitignore               # Excludes local secrets, build output and challenge brief
 ├── docker-compose.yml       # Local frontend + backend services
 ├── render.yaml              # Render Python web service blueprint
 └── README.md                # Setup, method, verification and deployment guide
@@ -81,51 +82,48 @@ Frontend (Node.js 20+), in a second terminal:
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
 The Vite development server proxies `/api` to `http://backend:8000`, which is the Compose service name. For running Vite directly on the host, change the proxy target in `frontend/vite.config.js` to `http://localhost:8000`.
 
-## 5. Deploy the backend to Render
+## 5. Live deployment
 
-The repository includes [`render.yaml`](render.yaml) with the service root, Python build/start commands, and health check. You can deploy with the Blueprint flow or enter the same settings manually.
+- **Frontend:** [https://dniwku.vercel.app](https://dniwku.vercel.app)
+- **Backend API:** [https://wind-forecast-vby2.onrender.com](https://wind-forecast-vby2.onrender.com)
+- **Backend health:** [https://wind-forecast-vby2.onrender.com/api/health](https://wind-forecast-vby2.onrender.com/api/health)
 
-### Blueprint flow
+The frontend is hosted on Vercel and calls the Render API using `VITE_API_BASE`. The Render service is a Docker web service rooted at `backend/` and uses `backend/Dockerfile`.
 
-1. Push this repository to GitHub.
-2. In Render, choose **New → Blueprint** and connect the repository.
-3. Review the `wind-desk-api` web service settings from `render.yaml` and create the service.
-4. Set the prompted `CORS_ORIGINS` value to the exact Vercel origin after creating the frontend (for example, `https://your-project.vercel.app`). Multiple origins can be comma-separated.
-5. Wait for the deploy to finish and check `https://<render-service>.onrender.com/api/health`. It should return `{"status":"ok","service":"wind-desk-api"}`.
+The included `render.yaml` is an alternative Native Python Blueprint configuration; the live service was created with the Docker runtime.
 
-Equivalent manual Web Service settings:
+Render environment variables:
 
 | Setting | Value |
 |---|---|
 | Root Directory | `backend` |
-| Runtime | Python 3 |
-| Build Command | `pip install -r requirements.txt` |
-| Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
+| Runtime | Docker |
+| `PORT` | `8000` (matches the backend container command) |
 | Health Check Path | `/api/health` |
 | `ELEXON_BASE_URL` | `https://data.elexon.co.uk/bmrs/api/v1` |
-| `CORS_ORIGINS` | Exact deployed frontend origin(s), comma-separated |
+| `CORS_ORIGINS` | `https://dniwku.vercel.app` |
 
-The source cache is in process memory. A Render restart/cold start fetches the two historical Elexon streams again; concurrent requests within one process share the cached fetch.
+`ELEXON_BASE_URL` has the same default in the backend and may be omitted. `PORT` is set to 8000 because the Docker image's Uvicorn command listens on that port. `CORS_ORIGINS` must contain the exact deployed frontend origin; separate multiple origins with commas. The source cache is in process memory, so a Render restart/cold start fetches both historical Elexon streams again.
 
 ## 6. Deploy the frontend to Vercel
 
-1. In Vercel, choose **Add New → Project** and import the GitHub repository.
-2. Set **Root Directory** to `frontend`.
-3. Use the Vite defaults: build command `npm run build`, output directory `dist`, install command `npm ci`.
-4. Add the environment variable below, using the Render URL from the previous section:
+The live frontend is deployed at [https://dniwku.vercel.app](https://dniwku.vercel.app). To reproduce or update the deployment:
+
+1. Import the GitHub repository in Vercel and set **Root Directory** to `frontend`.
+2. Use the Vite build command `npm run build`, output directory `dist`, and install command `npm ci`.
+3. Set this environment variable for Production (and Preview if needed):
 
    ```text
-   VITE_API_BASE=https://<render-service>.onrender.com
+   VITE_API_BASE=https://wind-forecast-vby2.onrender.com
    ```
 
-5. Deploy and open the generated Vercel URL. Check the browser network panel for `GET <Render URL>/api/wind` and confirm it succeeds without a CORS error.
-6. If Vercel assigned a different production/preview hostname, add each intended frontend origin to Render's `CORS_ORIGINS`, then redeploy/restart the API.
+4. Deploy and check the browser network panel for the `/api/wind` request. If you use another Vercel hostname, add its exact origin to Render's `CORS_ORIGINS` and redeploy the API.
 
 `VITE_API_BASE` is embedded at frontend build time. Set or change it in Vercel before redeploying. The included `frontend/vercel.json` adds security response headers; the frontend metadata includes a description and a valid `robots.txt`.
 
@@ -149,7 +147,7 @@ Browser/data checks:
 2. January, week and day selectors show the expected 1,488, 336 (full week), and 48 half-hour rows. The last partial January week contains 144 periods.
 3. Actuals are `FUELHH` WIND only. No delivery dates outside January 2026 or off-settlement 15-minute observations appear.
 4. Forecast versions published after the selected D-1 cutoff are excluded. A version published exactly at cutoff remains eligible.
-5. Missing half-hour forecasts use the mean of the two neighboring hourly values only when both are cutoff-eligible. The UI marks these estimates; it leaves unbracketed periods blank.
+5. Missing half-hour forecasts use the mean of the two neighboring hourly values only when both are cutoff-eligible. The footer explains the method; unbracketed periods remain blank.
 6. Reported and estimated forecasts are distinguished in the CSV and publication audit. The audit identifies the two source hours used by an estimated half-hour value.
 7. MAE, RMSE and mean bias reflect the comparable forecast/actual intervals, including the disclosed estimates; residual signs follow `forecast − actual`.
 8. Unavailable Elexon data shows an error state without substitute data.
@@ -162,4 +160,4 @@ OpenAI Codex was used to interpret the challenge brief and assist with implement
 
 ## 9. Deployment status
 
-The Render/Vercel configuration and steps are prepared, but no hosted deployment has been created from this workspace yet. Add the live URLs here after deployment.
+The frontend and backend are deployed at the links in the Live deployment section above. The project can also be started locally with Docker Compose.
